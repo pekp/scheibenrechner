@@ -57,8 +57,8 @@ type alias Model =
 
 
 type alias NormiertesModel =
-    { eingabeLeer : Bool
-    , gültigeEingabe : Bool
+    { eingabeIstLeer : Bool
+    , eingabeIstUngültig : Bool
     , scheiben : List Float
     , verschluss : Float
     , stange : Float
@@ -71,6 +71,9 @@ type alias NormiertesModel =
 normiere : Model -> NormiertesModel
 normiere model =
     let
+        eingabeIstGültig =
+            Regex.contains (Regex.fromString "^[0-9]+([,.][0-9]?)?$" |> Maybe.withDefault Regex.never) model.gewichtTotalEingabe
+
         stange =
             floatAusDeutschemFormat model.stange
 
@@ -80,8 +83,8 @@ normiere model =
         gewichtZuStecken =
             (gewichtTotal - stange) / 2
     in
-    { eingabeLeer = model.gewichtTotalEingabe == ""
-    , gültigeEingabe = gewichtIstGültig model.gewichtTotalEingabe
+    { eingabeIstLeer = model.gewichtTotalEingabe == ""
+    , eingabeIstUngültig = not eingabeIstGültig
     , scheiben = scheibenList model.scheiben
     , verschluss = floatAusDeutschemFormat model.verschluss
     , stange = stange
@@ -112,16 +115,6 @@ type Msg
     | Verschluss String
     | Stange String
     | GewichtAnzeige Bool
-
-
-gewichtIstGültig : String -> Bool
-gewichtIstGültig gewicht =
-    let
-        gültigesGewicht =
-            Regex.fromString "^[0-9]+([,.][0-9]?)?$"
-                |> Maybe.withDefault Regex.never
-    in
-    Regex.contains gültigesGewicht gewicht
 
 
 update : Msg -> Model -> Model
@@ -271,10 +264,10 @@ ausgabeLinksText n =
         kilosÜbrigS =
             deutschesFormat kilosÜbrigNum
     in
-    if n.eingabeLeer then
+    if n.eingabeIstLeer then
         ""
 
-    else if n.gültigeEingabe == False then
+    else if n.eingabeIstUngültig then
         "Ungültiges Gewicht."
 
     else if n.stange > n.gewichtTotal then
@@ -320,7 +313,7 @@ ausgabeRechtsText n =
             else
                 ""
     in
-    if n.eingabeLeer || n.gültigeEingabe == False || kilosÜbrig /= 0 then
+    if n.eingabeIstLeer || n.eingabeIstUngültig || kilosÜbrig /= 0 then
         ""
 
     else
