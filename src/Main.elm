@@ -4,10 +4,10 @@ import Browser
 import Dict exposing (Dict)
 import Html exposing (Html, br, button, canvas, div, form, input, label, option, select, table, td, text, tr)
 import Html.Attributes exposing (checked, height, id, name, step, style, type_, value, width)
-import Html.Events exposing (onCheck, onClick, onInput, onSubmit, preventDefaultOn)
+import Html.Events exposing (onCheck, onClick, onInput)
 import Json.Decode
-import Maybe exposing (withDefault)
-import Regex exposing (Regex)
+import Maybe
+import Regex
 import Svg
 import Svg.Attributes
 
