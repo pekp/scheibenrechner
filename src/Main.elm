@@ -309,16 +309,21 @@ ausgabeRechtsText n =
 
         verschluss =
             if n.verschluss /= 0.0 then
-                " + Verschluss"
+                [ "Verschluss" ]
 
             else
-                ""
+                []
     in
     if n.eingabeIstLeer || n.eingabeIstUngültig || kilosÜbrig /= 0 then
         ""
 
     else
-        gewichtZuStecken ++ istGleich ++ (List.map deutschesFormat verwendeteScheiben |> String.join " + ") ++ verschluss
+        gewichtZuStecken
+            ++ istGleich
+            ++ (List.map deutschesFormat verwendeteScheiben
+                    ++ verschluss
+                    |> String.join " + "
+               )
 
 
 rechteck : Int -> Int -> Int -> String -> Svg.Svg Msg
@@ -384,7 +389,7 @@ anzeige x y gewicht =
 zeichneStange : NormiertesModel -> Svg.Svg Msg
 zeichneStange n =
     let
-        ( verwendeteScheiben, _ ) =
+        ( verwendeteScheiben, kilosÜbrig ) =
             berechneScheiben n.gewichtZuStecken n.verschluss n.scheiben
 
         zeichneScheibe index scheibe =
@@ -407,7 +412,7 @@ zeichneStange n =
                 |> List.indexedMap zeichneScheibe
                 |> List.concat
     in
-    if List.length verwendeteScheiben > 0 then
+    if kilosÜbrig == 0.0 then
         Svg.svg
             [ id "svg"
             , Svg.Attributes.viewBox "-70 -200 800 600"
