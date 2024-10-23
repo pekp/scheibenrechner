@@ -2,7 +2,7 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Dict exposing (Dict)
-import Html exposing (Html, br, button, canvas, div, form, input, label, option, select, table, td, text, tr)
+import Html exposing (Html, button, canvas, div, form, input, label, option, select, table, td, text, tr)
 import Html.Attributes exposing (checked, height, id, name, step, style, type_, value, width)
 import Html.Events exposing (onCheck, onClick, onInput)
 import Json.Decode
@@ -320,15 +320,6 @@ ausgabeRechtsText n =
         gewichtZuStecken ++ istGleich ++ (List.map deutschesFormat verwendeteScheiben |> String.join " + ") ++ verschluss
 
 
-stringFromBool : Bool -> String
-stringFromBool b =
-    if b == True then
-        "True"
-
-    else
-        "False"
-
-
 rechteck : Int -> Int -> Int -> String -> Svg.Svg Msg
 rechteck x höhe breite farbe =
     Svg.rect
@@ -457,12 +448,9 @@ view model =
 
         nModel =
             normiere model
-
-        ( verwendeteScheiben, kilosÜbrig ) =
-            berechneScheiben nModel.gewichtZuStecken nModel.verschluss nModel.scheiben
     in
     div []
-        ([ form [ id "scheiben" ]
+        [ form [ id "scheiben" ]
             [ table []
                 [ tr []
                     (alleVerfügbarenScheiben
@@ -490,7 +478,7 @@ view model =
                     )
                 ]
             ]
-         , form [ id "eingabe", onSubmitCapture ]
+        , form [ id "eingabe", onSubmitCapture ]
             [ input [ type_ "Text", id "kilos", value model.gewichtTotalEingabe ] []
             , text " kg"
             , button [ type_ "submit" ] [ text "Berechnen" ]
@@ -507,15 +495,13 @@ view model =
                 ]
                 [ ausgabeRechtsText nModel |> text ]
             ]
-         , div
+        , div
             [ style "width" "100%"
             , style "position" "relative"
             , style "user-select" "none"
             ]
             [ canvas
-                [ style "background-color" "pink"
-
-                -- , style "visibility" "hidden"
+                [ style "visibility" "hidden"
                 , style "display" "block"
                 , style "width" "100%"
                 , style "height" "100%"
@@ -524,30 +510,8 @@ view model =
                 ]
                 []
             , zeichneStange nModel
-
-            -- , Svg.Attributes.style "left" "0"
-            -- , Svg.Attributes.style "position" "absolute"
-            -- , Svg.Attributes.style "top" "0"
             ]
-         , br [] []
-         , text ("Verschlüsse: " ++ model.verschluss ++ " kg")
-         , br [] []
-         , text ("Stange: " ++ model.stange ++ " kg")
-         , br [] []
-         , text ("Gewichtanzeige: " ++ stringFromBool model.gewichtAnzeige)
-         , br [] []
-         , text ("Gewicht: \"" ++ model.gewichtTotalEingabe ++ "\" kg")
-         , br [] []
-         , text ("Ausgabe links: \"" ++ ausgabeLinksText nModel ++ "\"")
-         , br [] []
-         , text ("Verfügbare Scheiben: " ++ stringFromList (scheibenList model.scheiben))
-         , br [] []
-         , text ("Kilos übrig: " ++ deutschesFormat kilosÜbrig)
-         , br [] []
-         , text ("Verwendete Scheiben: " ++ stringFromList verwendeteScheiben)
-         ]
-            ++ List.concatMap (\( k, v ) -> [ br [] [], text (k ++ " kg Scheiben: " ++ String.fromInt v) ]) (Dict.toList model.scheiben)
-        )
+        ]
 
 
 onSubmitCapture : Html.Attribute Msg
