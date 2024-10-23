@@ -177,18 +177,6 @@ scheibenList scheibenDict =
         |> List.sortBy (\value -> -value)
 
 
-stringFromList : List Float -> String
-stringFromList list =
-    let
-        stringList =
-            List.map String.fromFloat list
-
-        joined =
-            String.join ", " stringList
-    in
-    "[" ++ joined ++ "]"
-
-
 berechneScheiben : Float -> Float -> List Float -> ( List Float, Float )
 berechneScheiben gewichtZuStecken verschlussGewicht verfügbareScheiben =
     let
@@ -233,7 +221,7 @@ lookupAsString dict key =
 tdScheibe :
     Model
     -> Scheibe
-    -> Html Msg -- FIXME: Hier nicht lieber NormiertesModel???
+    -> Html Msg
 tdScheibe model (Scheibe gewicht _ farbe _) =
     td [ style "background-color" farbe ]
         [ text (gewicht ++ "\u{2009}kg × ")
