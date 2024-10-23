@@ -395,10 +395,29 @@ zeichneStange n =
             , scheibenBeschriftung xPosition scheibe
             ]
 
+        stange =
+            [ rechteck 180 40 900 "gray"
+            , rechteck -30 100 20 "gray"
+            ]
+
         scheibenElemente =
             verwendeteScheiben
                 |> List.indexedMap zeichneScheibe
                 |> List.concat
+
+        verschluss =
+            if n.verschluss /= 0 then
+                [ rechteck (List.length verwendeteScheiben * 60 + 40) 60 60 "blue" ]
+
+            else
+                []
+
+        gewichtAnzeige =
+            if n.gewichtAnzeige then
+                [ anzeige 730 -45 n.gewichtTotal ]
+
+            else
+                []
     in
     if kilosÜbrig == 0.0 then
         Svg.svg
@@ -412,23 +431,7 @@ zeichneStange n =
             , style "width" "100%"
             , Svg.Attributes.version "1.1"
             ]
-            ([ rechteck 180 40 900 "gray"
-             , rechteck -30 100 20 "gray"
-             ]
-                ++ scheibenElemente
-                ++ (if n.verschluss /= 0 then
-                        [ rechteck (List.length verwendeteScheiben * 60 + 40) 60 60 "blue" ]
-
-                    else
-                        []
-                   )
-                ++ (if n.gewichtAnzeige then
-                        [ anzeige 730 -45 n.gewichtTotal ]
-
-                    else
-                        []
-                   )
-            )
+            (stange ++ scheibenElemente ++ verschluss ++ gewichtAnzeige)
 
     else
         Svg.svg [] []
