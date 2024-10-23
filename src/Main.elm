@@ -33,6 +33,7 @@ type Scheibe
     = Scheibe String Int String Int -- Gewicht Höhe Farbe Anzahl
 
 
+scheiben : List Scheibe
 scheiben =
     [ Scheibe "50" 300 "palegreen" 2
     , Scheibe "25" 300 "red" 0
