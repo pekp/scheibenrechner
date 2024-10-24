@@ -48,6 +48,30 @@ scheiben =
     ]
 
 
+scheibenHöhe : Float -> Int
+scheibenHöhe gewicht =
+    scheiben
+        |> List.filter
+            (\(Scheibe gewichtStr _ _ _) ->
+                floatAusDeutschemFormat gewichtStr == gewicht
+            )
+        |> List.head
+        |> Maybe.map (\(Scheibe _ höhe _ _) -> höhe)
+        |> Maybe.withDefault 0
+
+
+scheibenFarbe : Float -> String
+scheibenFarbe gewicht =
+    scheiben
+        |> List.filter
+            (\(Scheibe gewichtStr _ _ _) ->
+                floatAusDeutschemFormat gewichtStr == gewicht
+            )
+        |> List.head
+        |> Maybe.map (\(Scheibe _ _ farbe _) -> farbe)
+        |> Maybe.withDefault "pink"
+
+
 type alias Model =
     { verfügbareScheiben : Dict String Int
     , verschluss : String
@@ -120,6 +144,7 @@ update msg model =
                 aktualisiertesModel =
                     { model | gewichtTotalEingabe = gewichtTotalEingabeGetrimmt }
             in
+            -- Die Normierung findet nur statt, wenn der User ein Gewicht vollständig eingegeben hat...
             { aktualisiertesModel | normiert = normiere aktualisiertesModel }
 
         ClearGewicht ->
@@ -127,6 +152,7 @@ update msg model =
                 aktualisiertesModel =
                     { model | gewichtTotalEingabe = "" }
             in
+            -- ... oder wenn er Zurücksetzen geklickt hat.
             { aktualisiertesModel | normiert = normiere aktualisiertesModel }
 
         AnzahlScheiben gewicht num ->
@@ -314,30 +340,6 @@ rechteckSvg x höhe breite farbe =
         , Svg.Attributes.style ("fill: " ++ farbe)
         ]
         []
-
-
-scheibenHöhe : Float -> Int
-scheibenHöhe gewicht =
-    scheiben
-        |> List.filter
-            (\(Scheibe gewichtStr _ _ _) ->
-                floatAusDeutschemFormat gewichtStr == gewicht
-            )
-        |> List.head
-        |> Maybe.map (\(Scheibe _ höhe _ _) -> höhe)
-        |> Maybe.withDefault 0
-
-
-scheibenFarbe : Float -> String
-scheibenFarbe gewicht =
-    scheiben
-        |> List.filter
-            (\(Scheibe gewichtStr _ _ _) ->
-                floatAusDeutschemFormat gewichtStr == gewicht
-            )
-        |> List.head
-        |> Maybe.map (\(Scheibe _ _ farbe _) -> farbe)
-        |> Maybe.withDefault "pink"
 
 
 visualisiereSvg : NormiertesModel -> Svg.Svg Msg
