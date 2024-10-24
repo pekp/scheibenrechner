@@ -54,6 +54,7 @@ type alias Model =
     , stange : String
     , gewichtAnzeige : Bool
     , gewichtTotalEingabe : String
+    , normiert : NormiertesModel
     }
 
 
@@ -102,6 +103,16 @@ init =
     , stange = "20"
     , gewichtAnzeige = True
     , gewichtTotalEingabe = ""
+    , normiert =
+        { eingabeIstLeer = True
+        , eingabeIstUngültig = True
+        , scheiben = []
+        , verschluss = 0.0
+        , stange = 20.0
+        , gewichtAnzeige = True
+        , gewichtTotal = 0.0
+        , gewichtZuStecken = 0.0
+        }
     }
 
 
@@ -121,18 +132,26 @@ type Msg
 update : Msg -> Model -> Model
 update msg model =
     case msg of
-        UpdateGewicht aktuellesGewicht ->
-            { model
-                | gewichtTotalEingabe =
-                    if String.trim aktuellesGewicht == "" then
+        UpdateGewicht gewichtTotalUserEingabe ->
+            let
+                gewichtTotalCleaneEingabe =
+                    if String.trim gewichtTotalUserEingabe == "" then
                         ""
 
                     else
-                        aktuellesGewicht
-            }
+                        gewichtTotalUserEingabe
+
+                aktualisiertesModel =
+                    { model | gewichtTotalEingabe = gewichtTotalCleaneEingabe }
+            in
+            { aktualisiertesModel | normiert = normiere aktualisiertesModel }
 
         ClearGewicht ->
-            { model | gewichtTotalEingabe = "" }
+            let
+                aktualisiertesModel =
+                    { model | gewichtTotalEingabe = "" }
+            in
+            { aktualisiertesModel | normiert = normiere aktualisiertesModel }
 
         Scheiben gewicht num ->
             { model | scheiben = Dict.insert gewicht num model.scheiben }
@@ -419,7 +438,10 @@ zeichneStange n =
             else
                 []
     in
-    if kilosÜbrig == 0.0 then
+    if n.eingabeIstUngültig || kilosÜbrig /= 0.0 then
+        Svg.svg [] []
+
+    else
         Svg.svg
             [ id "svg"
             , Svg.Attributes.viewBox "-70 -200 800 600"
@@ -433,18 +455,12 @@ zeichneStange n =
             ]
             (stange ++ scheibenElemente ++ verschluss ++ gewichtAnzeige)
 
-    else
-        Svg.svg [] []
-
 
 view : Model -> Html Msg
 view model =
     let
         alleVerfügbarenScheiben =
             List.map (tdScheibe model) scheiben
-
-        nModel =
-            normiere model
     in
     div []
         [ form [ id "scheiben" ]
@@ -485,12 +501,12 @@ view model =
                 , style "display" "inline-block"
                 , style "margin-right" "0.5em"
                 ]
-                [ ausgabeLinksText nModel |> text ]
+                [ ausgabeLinksText model.normiert |> text ]
             , div
                 [ style "background-color" "orange"
                 , style "display" "inline-block"
                 ]
-                [ ausgabeRechtsText nModel |> text ]
+                [ ausgabeRechtsText model.normiert |> text ]
             ]
         , div
             [ style "width" "100%"
@@ -506,7 +522,7 @@ view model =
                 , height 54
                 ]
                 []
-            , zeichneStange nModel
+            , zeichneStange model.normiert
             ]
         ]
 
