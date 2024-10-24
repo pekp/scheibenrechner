@@ -123,7 +123,7 @@ init =
 type Msg
     = UpdateGewicht String
     | ClearGewicht
-    | Scheiben String Int
+    | AnzahlScheiben String Int
     | Verschluss String
     | Stange String
     | GewichtAnzeige Bool
@@ -153,7 +153,7 @@ update msg model =
             in
             { aktualisiertesModel | normiert = normiere aktualisiertesModel }
 
-        Scheiben gewicht num ->
+        AnzahlScheiben gewicht num ->
             { model | scheiben = Dict.insert gewicht num model.scheiben }
 
         Verschluss verschluss ->
@@ -225,14 +225,14 @@ scheibeTdHtml :
     -> Html Msg
 scheibeTdHtml model (Scheibe gewicht _ farbe _) =
     let
-        scheibenEvent : String -> Msg
-        scheibenEvent numAsStr =
+        anzahlScheibenEvent : String -> Msg
+        anzahlScheibenEvent numAsStr =
             case String.toInt numAsStr of
                 Just num ->
-                    Scheiben gewicht num
+                    AnzahlScheiben gewicht num
 
                 Nothing ->
-                    Scheiben gewicht 0
+                    AnzahlScheiben gewicht 0
     in
     td [ style "background-color" farbe ]
         [ text (gewicht ++ "\u{2009}kg × ")
@@ -243,7 +243,7 @@ scheibeTdHtml model (Scheibe gewicht _ farbe _) =
             , Html.Attributes.min "0"
             , Html.Attributes.max "10"
             , value (model.scheiben |> Dict.get gewicht |> Maybe.withDefault 0 |> String.fromInt)
-            , onInput scheibenEvent
+            , onInput anzahlScheibenEvent
             ]
             []
         ]
@@ -325,8 +325,8 @@ ausgabeRechtsText n =
                )
 
 
-rechteck : Int -> Int -> Int -> String -> Svg.Svg Msg
-rechteck x höhe breite farbe =
+rechteckSvg : Int -> Int -> Int -> String -> Svg.Svg Msg
+rechteckSvg x höhe breite farbe =
     Svg.rect
         [ Svg.Attributes.x (String.fromInt (x - breite // 2))
         , Svg.Attributes.y (String.fromInt (-höhe // 2 + 40))
@@ -361,71 +361,56 @@ scheibenFarbe gewicht =
         |> Maybe.withDefault "pink"
 
 
-scheibenBeschriftung : Int -> Float -> Svg.Svg Msg
-scheibenBeschriftung x gewicht =
-    Svg.text_
-        [ Svg.Attributes.x (String.fromInt x)
-        , Svg.Attributes.y "230"
-        , Svg.Attributes.fontSize "30"
-        , Svg.Attributes.textAnchor "middle"
-        , Svg.Attributes.style "font-family: Helvetica"
-        ]
-        [ Svg.text (deutschesFormat gewicht) ]
-
-
-anzeige : Int -> Int -> Float -> Svg.Svg Msg
-anzeige x y gewicht =
-    Svg.text_
-        [ Svg.Attributes.x (String.fromInt x)
-        , Svg.Attributes.y (String.fromInt y)
-        , Svg.Attributes.fontSize "200"
-        , Svg.Attributes.textAnchor "end"
-        , Svg.Attributes.style "font-family: Helvetica"
-        ]
-        [ Svg.text (deutschesFormat gewicht) ]
-
-
 visualisiereSvg : NormiertesModel -> Svg.Svg Msg
 visualisiereSvg n =
     let
         ( verwendeteScheiben, kilosÜbrig ) =
             berechneScheiben n.gewichtZuStecken n.verschluss n.scheiben
 
-        zeichneScheibe index scheibe =
+        scheibeListSvg index scheibe =
             let
                 xPosition =
                     60 * index
-
-                höhe =
-                    scheibenHöhe scheibe
-
-                farbe =
-                    scheibenFarbe scheibe
             in
-            [ rechteck xPosition höhe 40 farbe
-            , scheibenBeschriftung xPosition scheibe
+            [ rechteckSvg xPosition (scheibenHöhe scheibe) 40 (scheibenFarbe scheibe)
+            , Svg.text_
+                [ Svg.Attributes.x (String.fromInt xPosition)
+                , Svg.Attributes.y "230"
+                , Svg.Attributes.fontSize "30"
+                , Svg.Attributes.textAnchor "middle"
+                , Svg.Attributes.style "font-family: Helvetica"
+                ]
+                [ Svg.text (deutschesFormat scheibe) ]
             ]
 
-        stange =
-            [ rechteck 180 40 900 "gray"
-            , rechteck -30 100 20 "gray"
+        stangeListSvg =
+            [ rechteckSvg 180 40 900 "gray"
+            , rechteckSvg -30 100 20 "gray"
             ]
 
-        scheibenElemente =
+        scheibenElementeListSvg =
             verwendeteScheiben
-                |> List.indexedMap zeichneScheibe
+                |> List.indexedMap scheibeListSvg
                 |> List.concat
 
-        verschluss =
+        verschlussListSvg =
             if n.verschluss /= 0 then
-                [ rechteck (List.length verwendeteScheiben * 60 + 40) 60 60 "blue" ]
+                [ rechteckSvg (List.length verwendeteScheiben * 60 + 40) 60 60 "blue" ]
 
             else
                 []
 
-        gewichtAnzeige =
+        gewichtAnzeigeListSvg =
             if n.gewichtAnzeige then
-                [ anzeige 730 -45 n.gewichtTotal ]
+                [ Svg.text_
+                    [ Svg.Attributes.x "730"
+                    , Svg.Attributes.y "-45"
+                    , Svg.Attributes.fontSize "200"
+                    , Svg.Attributes.textAnchor "end"
+                    , Svg.Attributes.style "font-family: Helvetica"
+                    ]
+                    [ Svg.text (deutschesFormat n.gewichtTotal) ]
+                ]
 
             else
                 []
@@ -445,7 +430,7 @@ visualisiereSvg n =
             , style "width" "100%"
             , Svg.Attributes.version "1.1"
             ]
-            (stange ++ scheibenElemente ++ verschluss ++ gewichtAnzeige)
+            (stangeListSvg ++ scheibenElementeListSvg ++ verschlussListSvg ++ gewichtAnzeigeListSvg)
 
 
 view : Model -> Html Msg
