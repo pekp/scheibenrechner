@@ -134,7 +134,7 @@ update msg model =
     case msg of
         UpdateGewicht gewichtTotalUserEingabe ->
             let
-                gewichtTotalCleaneEingabe =
+                gewichtTotalEingabeGetrimmt =
                     if String.trim gewichtTotalUserEingabe == "" then
                         ""
 
@@ -142,7 +142,7 @@ update msg model =
                         gewichtTotalUserEingabe
 
                 aktualisiertesModel =
-                    { model | gewichtTotalEingabe = gewichtTotalCleaneEingabe }
+                    { model | gewichtTotalEingabe = gewichtTotalEingabeGetrimmt }
             in
             { aktualisiertesModel | normiert = normiere aktualisiertesModel }
 
@@ -219,29 +219,21 @@ berechneScheiben gewichtZuStecken verschlussGewicht verfügbareScheiben =
 -- VIEW
 
 
-scheibenEvent : String -> String -> Msg
-scheibenEvent gewicht numAsStr =
-    case String.toInt numAsStr of
-        Just num ->
-            Scheiben gewicht num
-
-        Nothing ->
-            Scheiben gewicht 0
-
-
-lookupAsString : Dict String Int -> String -> String
-lookupAsString dict key =
-    dict
-        |> Dict.get key
-        |> Maybe.withDefault 0
-        |> String.fromInt
-
-
-tdScheibe :
+scheibeTdHtml :
     Model
     -> Scheibe
     -> Html Msg
-tdScheibe model (Scheibe gewicht _ farbe _) =
+scheibeTdHtml model (Scheibe gewicht _ farbe _) =
+    let
+        scheibenEvent : String -> Msg
+        scheibenEvent numAsStr =
+            case String.toInt numAsStr of
+                Just num ->
+                    Scheiben gewicht num
+
+                Nothing ->
+                    Scheiben gewicht 0
+    in
     td [ style "background-color" farbe ]
         [ text (gewicht ++ "\u{2009}kg × ")
         , input
@@ -250,8 +242,8 @@ tdScheibe model (Scheibe gewicht _ farbe _) =
             , step "2"
             , Html.Attributes.min "0"
             , Html.Attributes.max "10"
-            , value (lookupAsString model.scheiben gewicht)
-            , onInput (scheibenEvent gewicht)
+            , value (model.scheiben |> Dict.get gewicht |> Maybe.withDefault 0 |> String.fromInt)
+            , onInput scheibenEvent
             ]
             []
         ]
@@ -393,8 +385,8 @@ anzeige x y gewicht =
         [ Svg.text (deutschesFormat gewicht) ]
 
 
-zeichneStange : NormiertesModel -> Svg.Svg Msg
-zeichneStange n =
+visualisiereSvg : NormiertesModel -> Svg.Svg Msg
+visualisiereSvg n =
     let
         ( verwendeteScheiben, kilosÜbrig ) =
             berechneScheiben n.gewichtZuStecken n.verschluss n.scheiben
@@ -459,14 +451,14 @@ zeichneStange n =
 view : Model -> Html Msg
 view model =
     let
-        alleVerfügbarenScheiben =
-            List.map (tdScheibe model) scheiben
+        alleVerfügbarenScheibenListTdHtml =
+            List.map (scheibeTdHtml model) scheiben
     in
     div []
         [ form [ id "scheiben" ]
             [ table []
                 [ tr []
-                    (alleVerfügbarenScheiben
+                    (alleVerfügbarenScheibenListTdHtml
                         ++ [ td [ style "background-color" "beige" ]
                                 [ select [ onInput Verschluss ]
                                     [ option [ value "0" ] [ text "0\u{2009}kg" ]
@@ -522,7 +514,7 @@ view model =
                 , height 54
                 ]
                 []
-            , zeichneStange model.normiert
+            , visualisiereSvg model.normiert
             ]
         ]
 
