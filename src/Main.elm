@@ -49,7 +49,7 @@ scheiben =
 
 
 type alias Model =
-    { scheiben : Dict String Int
+    { verfügbareScheiben : Dict String Int
     , verschluss : String
     , stange : String
     , gewichtAnzeige : Bool
@@ -61,44 +61,19 @@ type alias Model =
 type alias NormiertesModel =
     { eingabeIstLeer : Bool
     , eingabeIstUngültig : Bool
-    , scheiben : List Float
     , verschluss : Float
     , stange : Float
     , gewichtAnzeige : Bool
     , gewichtTotal : Float
     , gewichtZuStecken : Float
-    }
-
-
-normiere : Model -> NormiertesModel
-normiere model =
-    let
-        eingabeIstGültig =
-            Regex.contains (Regex.fromString "^[0-9]+([,.][0-9]?)?$" |> Maybe.withDefault Regex.never) model.gewichtTotalEingabe
-
-        stange =
-            floatAusDeutschemFormat model.stange
-
-        gewichtTotal =
-            floatAusDeutschemFormat model.gewichtTotalEingabe
-
-        gewichtZuStecken =
-            (gewichtTotal - stange) / 2
-    in
-    { eingabeIstLeer = model.gewichtTotalEingabe == ""
-    , eingabeIstUngültig = not eingabeIstGültig
-    , scheiben = scheibenList model.scheiben
-    , verschluss = floatAusDeutschemFormat model.verschluss
-    , stange = stange
-    , gewichtAnzeige = model.gewichtAnzeige
-    , gewichtTotal = gewichtTotal
-    , gewichtZuStecken = gewichtZuStecken
+    , verwendeteScheiben : List Float
+    , kilosÜbrig : Float
     }
 
 
 init : Model
 init =
-    { scheiben = Dict.fromList (List.map (\(Scheibe gewicht _ _ anzahl) -> ( gewicht, anzahl )) scheiben)
+    { verfügbareScheiben = Dict.fromList (List.map (\(Scheibe gewicht _ _ anzahl) -> ( gewicht, anzahl )) scheiben)
     , verschluss = "0"
     , stange = "20"
     , gewichtAnzeige = True
@@ -106,12 +81,13 @@ init =
     , normiert =
         { eingabeIstLeer = True
         , eingabeIstUngültig = True
-        , scheiben = []
         , verschluss = 0.0
         , stange = 20.0
         , gewichtAnzeige = True
         , gewichtTotal = 0.0
         , gewichtZuStecken = 0.0
+        , verwendeteScheiben = []
+        , kilosÜbrig = 0.0
         }
     }
 
@@ -154,7 +130,7 @@ update msg model =
             { aktualisiertesModel | normiert = normiere aktualisiertesModel }
 
         AnzahlScheiben gewicht num ->
-            { model | scheiben = Dict.insert gewicht num model.scheiben }
+            { model | verfügbareScheiben = Dict.insert gewicht num model.verfügbareScheiben }
 
         Verschluss verschluss ->
             { model | verschluss = verschluss }
@@ -166,34 +142,46 @@ update msg model =
             { model | gewichtAnzeige = gewichtAnzeige }
 
 
-deutschesFormat : Float -> String
-deutschesFormat gewicht =
-    String.fromFloat gewicht |> String.replace "." ","
-
-
-floatAusDeutschemFormat : String -> Float
-floatAusDeutschemFormat deFormat =
+normiere : Model -> NormiertesModel
+normiere model =
     let
-        usFormat =
-            String.replace "," "." deFormat
+        eingabeIstGültig =
+            Regex.contains (Regex.fromString "^[0-9]+([,.][0-9]?)?$" |> Maybe.withDefault Regex.never) model.gewichtTotalEingabe
+
+        verfügbareScheiben =
+            Dict.toList model.verfügbareScheiben
+                |> List.map
+                    (\( gewicht, anzahl ) ->
+                        List.repeat (anzahl // 2) (floatAusDeutschemFormat gewicht)
+                    )
+                |> List.concat
+                |> List.sortBy (\value -> -value)
+
+        stange =
+            floatAusDeutschemFormat model.stange
+
+        gewichtTotal =
+            floatAusDeutschemFormat model.gewichtTotalEingabe
+
+        gewichtZuStecken =
+            (gewichtTotal - stange) / 2
+
+        verschluss =
+            floatAusDeutschemFormat model.verschluss
+
+        ( verwendeteScheiben, kilosÜbrig ) =
+            berechneScheiben gewichtZuStecken verschluss verfügbareScheiben
     in
-    case String.toFloat usFormat of
-        Just wert ->
-            wert
-
-        Nothing ->
-            0.0
-
-
-scheibenList : Dict String Int -> List Float
-scheibenList scheibenDict =
-    Dict.toList scheibenDict
-        |> List.map
-            (\( gewicht, anzahl ) ->
-                List.repeat (anzahl // 2) (floatAusDeutschemFormat gewicht)
-            )
-        |> List.concat
-        |> List.sortBy (\value -> -value)
+    { eingabeIstLeer = model.gewichtTotalEingabe == ""
+    , eingabeIstUngültig = not eingabeIstGültig
+    , verschluss = verschluss
+    , stange = stange
+    , gewichtAnzeige = model.gewichtAnzeige
+    , gewichtTotal = gewichtTotal
+    , gewichtZuStecken = gewichtZuStecken
+    , verwendeteScheiben = verwendeteScheiben
+    , kilosÜbrig = kilosÜbrig
+    }
 
 
 berechneScheiben : Float -> Float -> List Float -> ( List Float, Float )
@@ -219,36 +207,6 @@ berechneScheiben gewichtZuStecken verschlussGewicht verfügbareScheiben =
 -- VIEW
 
 
-scheibeTdHtml :
-    Model
-    -> Scheibe
-    -> Html Msg
-scheibeTdHtml model (Scheibe gewicht _ farbe _) =
-    let
-        anzahlScheibenEvent : String -> Msg
-        anzahlScheibenEvent numAsStr =
-            case String.toInt numAsStr of
-                Just num ->
-                    AnzahlScheiben gewicht num
-
-                Nothing ->
-                    AnzahlScheiben gewicht 0
-    in
-    td [ style "background-color" farbe ]
-        [ text (gewicht ++ "\u{2009}kg × ")
-        , input
-            [ name gewicht
-            , type_ "number"
-            , step "2"
-            , Html.Attributes.min "0"
-            , Html.Attributes.max "10"
-            , value (model.scheiben |> Dict.get gewicht |> Maybe.withDefault 0 |> String.fromInt)
-            , onInput anzahlScheibenEvent
-            ]
-            []
-        ]
-
-
 ausgabeLinksText : NormiertesModel -> String
 ausgabeLinksText n =
     let
@@ -258,11 +216,8 @@ ausgabeLinksText n =
         stange =
             deutschesFormat n.stange
 
-        ( _, kilosÜbrigNum ) =
-            berechneScheiben n.gewichtZuStecken n.verschluss n.scheiben
-
-        kilosÜbrigS =
-            deutschesFormat kilosÜbrigNum
+        kilosÜbrig =
+            deutschesFormat n.kilosÜbrig
     in
     if n.eingabeIstLeer then
         ""
@@ -273,8 +228,8 @@ ausgabeLinksText n =
     else if n.stange > n.gewichtTotal then
         "Das angegebene Gewicht von " ++ gewichtTotal ++ "\u{2009}kg ist geringer als das Stangengewicht von " ++ stange ++ "\u{2009}kg."
 
-    else if kilosÜbrigNum /= 0 then
-        "Das angegebene Gewicht von " ++ gewichtTotal ++ "\u{2009}kg lässt sich mit den verfügbaren Scheiben nicht stecken.  Auf jeder Seite bliebe ein Rest von " ++ kilosÜbrigS ++ "\u{2009}kg für den keine Scheiben vorliegen."
+    else if n.kilosÜbrig /= 0 then
+        "Das angegebene Gewicht von " ++ gewichtTotal ++ "\u{2009}kg lässt sich mit den verfügbaren Scheiben nicht stecken.  Auf jeder Seite bliebe ein Rest von " ++ kilosÜbrig ++ "\u{2009}kg für den keine Scheiben vorliegen."
 
     else
         gewichtTotal
@@ -296,11 +251,8 @@ ausgabeRechtsText n =
         gewichtZuStecken =
             deutschesFormat n.gewichtZuStecken
 
-        ( verwendeteScheiben, kilosÜbrig ) =
-            berechneScheiben n.gewichtZuStecken n.verschluss n.scheiben
-
         istGleich =
-            if List.length verwendeteScheiben > 0 || n.verschluss /= 0 then
+            if List.length n.verwendeteScheiben > 0 || n.verschluss /= 0 then
                 " = "
 
             else
@@ -313,16 +265,43 @@ ausgabeRechtsText n =
             else
                 []
     in
-    if n.eingabeIstLeer || n.eingabeIstUngültig || kilosÜbrig /= 0 then
+    if n.eingabeIstLeer || n.eingabeIstUngültig || n.kilosÜbrig /= 0 then
         ""
 
     else
         gewichtZuStecken
             ++ istGleich
-            ++ (List.map deutschesFormat verwendeteScheiben
+            ++ (List.map deutschesFormat n.verwendeteScheiben
                     ++ verschluss
                     |> String.join " + "
                )
+
+
+scheibeTdHtml : Model -> Scheibe -> Html Msg
+scheibeTdHtml model (Scheibe gewicht _ farbe _) =
+    let
+        anzahlScheibenEvent : String -> Msg
+        anzahlScheibenEvent numAsStr =
+            case String.toInt numAsStr of
+                Just num ->
+                    AnzahlScheiben gewicht num
+
+                Nothing ->
+                    AnzahlScheiben gewicht 0
+    in
+    td [ style "background-color" farbe ]
+        [ text (gewicht ++ "\u{2009}kg × ")
+        , input
+            [ name gewicht
+            , type_ "number"
+            , step "2"
+            , Html.Attributes.min "0"
+            , Html.Attributes.max "10"
+            , value (model.verfügbareScheiben |> Dict.get gewicht |> Maybe.withDefault 0 |> String.fromInt)
+            , onInput anzahlScheibenEvent
+            ]
+            []
+        ]
 
 
 rechteckSvg : Int -> Int -> Int -> String -> Svg.Svg Msg
@@ -364,9 +343,6 @@ scheibenFarbe gewicht =
 visualisiereSvg : NormiertesModel -> Svg.Svg Msg
 visualisiereSvg n =
     let
-        ( verwendeteScheiben, kilosÜbrig ) =
-            berechneScheiben n.gewichtZuStecken n.verschluss n.scheiben
-
         scheibeListSvg index scheibe =
             let
                 xPosition =
@@ -389,13 +365,13 @@ visualisiereSvg n =
             ]
 
         scheibenElementeListSvg =
-            verwendeteScheiben
+            n.verwendeteScheiben
                 |> List.indexedMap scheibeListSvg
                 |> List.concat
 
         verschlussListSvg =
             if n.verschluss /= 0 then
-                [ rechteckSvg (List.length verwendeteScheiben * 60 + 40) 60 60 "blue" ]
+                [ rechteckSvg (List.length n.verwendeteScheiben * 60 + 40) 60 60 "blue" ]
 
             else
                 []
@@ -415,7 +391,7 @@ visualisiereSvg n =
             else
                 []
     in
-    if n.eingabeIstUngültig || kilosÜbrig /= 0.0 then
+    if n.eingabeIstUngültig || n.kilosÜbrig /= 0.0 then
         Svg.svg [] []
 
     else
@@ -511,3 +487,26 @@ onSubmitCapture =
             Json.Decode.map UpdateGewicht (Json.Decode.at [ "target", "0", "value" ] Json.Decode.string)
     in
     Html.Events.preventDefaultOn "submit" (Json.Decode.map (\msg -> ( msg, True )) decoder)
+
+
+
+-- UTILITY
+
+
+deutschesFormat : Float -> String
+deutschesFormat gewicht =
+    String.fromFloat gewicht |> String.replace "." ","
+
+
+floatAusDeutschemFormat : String -> Float
+floatAusDeutschemFormat deFormat =
+    let
+        usFormat =
+            String.replace "," "." deFormat
+    in
+    case String.toFloat usFormat of
+        Just wert ->
+            wert
+
+        Nothing ->
+            0.0
