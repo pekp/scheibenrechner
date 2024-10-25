@@ -144,7 +144,8 @@ update msg model =
                 aktualisiertesModel =
                     { model | gewichtTotalEingabe = gewichtTotalEingabeGetrimmt }
             in
-            -- Die Normierung findet nur statt, wenn der User ein Gewicht vollständig eingegeben hat...
+            -- Wir wollen das klassische HTML Formularverhalten emulieren und nicht bei jeder Eingabe sofort ein Update triggern.
+            -- Die Normierung (und alle ihre Konsequenzen wie das Aktualisieren der Anzeige) findet nur statt, wenn der User ein Gewicht vollständig eingegeben hat...
             { aktualisiertesModel | normiert = normiere aktualisiertesModel }
 
         ClearGewicht ->
@@ -483,6 +484,12 @@ view model =
 
 
 onSubmitCapture : Html.Attribute Msg
+
+
+
+-- Wir wollen das klassische HTML Formularverhalten emulieren und nicht bei jeder Eingabe sofort ein Update triggern.
+
+
 onSubmitCapture =
     let
         decoder =
