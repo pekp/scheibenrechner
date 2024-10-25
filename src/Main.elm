@@ -30,21 +30,21 @@ main =
 
 
 type Scheibe
-    = Scheibe String Int String Int -- Gewicht Höhe Farbe Anzahl
+    = Scheibe Float Int String Int -- Gewicht Höhe Farbe Anzahl
 
 
 scheiben : List Scheibe
 scheiben =
-    [ Scheibe "50" 300 "palegreen" 2
-    , Scheibe "25" 300 "red" 0
-    , Scheibe "20" 300 "royalblue" 4
-    , Scheibe "15" 230 "palegreen" 0
-    , Scheibe "10" 200 "orangered" 2
-    , Scheibe "5" 160 "blue" 2
-    , Scheibe "2,5" 140 "mediumseagreen" 2
-    , Scheibe "2" 120 "palegreen" 0
-    , Scheibe "1,25" 100 "orangered" 2
-    , Scheibe "0,5" 80 "palegreen" 0
+    [ Scheibe 50 300 "palegreen" 2
+    , Scheibe 25 300 "red" 0
+    , Scheibe 20 300 "royalblue" 4
+    , Scheibe 15 230 "palegreen" 0
+    , Scheibe 10 200 "orangered" 2
+    , Scheibe 5 160 "blue" 2
+    , Scheibe 2.5 140 "mediumseagreen" 2
+    , Scheibe 2 120 "palegreen" 0
+    , Scheibe 1.25 100 "orangered" 2
+    , Scheibe 0.5 80 "palegreen" 0
     ]
 
 
@@ -52,8 +52,8 @@ scheibenHöhe : Float -> Int
 scheibenHöhe gewicht =
     scheiben
         |> List.filter
-            (\(Scheibe gewichtStr _ _ _) ->
-                floatAusDeutschemFormat gewichtStr == gewicht
+            (\(Scheibe gew _ _ _) ->
+                gew == gewicht
             )
         |> List.head
         |> Maybe.map (\(Scheibe _ höhe _ _) -> höhe)
@@ -64,8 +64,8 @@ scheibenFarbe : Float -> String
 scheibenFarbe gewicht =
     scheiben
         |> List.filter
-            (\(Scheibe gewichtStr _ _ _) ->
-                floatAusDeutschemFormat gewichtStr == gewicht
+            (\(Scheibe gew _ _ _) ->
+                gew == gewicht
             )
         |> List.head
         |> Maybe.map (\(Scheibe _ _ farbe _) -> farbe)
@@ -73,7 +73,7 @@ scheibenFarbe gewicht =
 
 
 type alias Model =
-    { verfügbareScheiben : Dict String Int
+    { verfügbareScheiben : Dict Float Int
     , verschluss : String
     , stange : String
     , gewichtAnzeige : Bool
@@ -123,7 +123,7 @@ init =
 type Msg
     = UpdateGewicht String
     | ClearGewicht
-    | AnzahlScheiben String Int
+    | AnzahlScheiben Float Int
     | Verschluss String
     | Stange String
     | GewichtAnzeige Bool
@@ -179,7 +179,7 @@ normiere model =
             Dict.toList model.verfügbareScheiben
                 |> List.map
                     (\( gewicht, anzahl ) ->
-                        List.repeat (anzahl // 2) (floatAusDeutschemFormat gewicht)
+                        List.repeat (anzahl // 2) gewicht
                     )
                 |> List.concat
                 |> List.sortBy (\value -> -value)
@@ -317,9 +317,9 @@ scheibeTdHtml model (Scheibe gewicht _ farbe _) =
                     AnzahlScheiben gewicht 0
     in
     td [ style "background-color" farbe ]
-        [ text (gewicht ++ "\u{2009}kg × ")
+        [ text (deutschesFormat gewicht ++ "\u{2009}kg × ")
         , input
-            [ name gewicht
+            [ name (deutschesFormat gewicht)
             , type_ "number"
             , step "2"
             , Html.Attributes.min "0"
