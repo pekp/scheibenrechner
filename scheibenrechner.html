@@ -1,0 +1,266 @@
+<!doctype html>
+<html>
+<head>
+<title>Scheibenrechner</title>
+<meta charset="UTF-8">
+<style>
+form.scheiben select {
+    text-align: right;
+}
+
+form.scheiben input {
+    width: 3.5em;
+    text-align: right;
+}
+
+#ausgabe_links {
+    background-color: orange;
+    display: inline-block;
+    margin-right: 0.5em;
+}
+
+#ausgabe_rechts {
+    background-color: orange;
+    display: inline-block;
+}
+
+svg {
+    overflow: hidden;
+}
+</style>
+<script>
+var gewicht_von = function(id) {
+    return parseFloat(/^\d+(?:,\d+)?/.exec(document.getElementById(id).value)[0].replace(",", "."));
+}
+
+var deutsches_format = function(zahl) {
+    var teile = /^(-?\d*)\.(\d)(\d)$/.exec(parseFloat(zahl).toFixed(2));
+    if (teile[2] == "0" && teile[3] == "0") {
+        return teile[1];
+    } else if (teile[3] == "0") {
+        return teile[1] + "," + teile[2];
+    } else {
+        return teile[1] + "," + teile[2] + teile[3];
+    }
+}
+
+var rechteck = function(x, hoehe, breite, farbe) {
+    var rechteck = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    rechteck.setAttribute("x", x - breite / 2);
+    rechteck.setAttribute("y", -hoehe / 2 + 40);
+    rechteck.setAttribute("width", breite);
+    rechteck.setAttribute("height", hoehe);
+    rechteck.setAttribute("style", "fill: " + farbe + ";");
+
+    return rechteck;
+}
+
+var scheibenbeschriftung = function(x, text) {
+    var svgtext = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    svgtext.setAttribute("x", x);
+    svgtext.setAttribute("y", 230);
+    svgtext.setAttribute("font-size", "30");
+    svgtext.setAttribute("text-anchor", "middle");
+    svgtext.setAttribute("style", "font-family: Helvetica");
+
+    var text = document.createTextNode(deutsches_format(text));
+    svgtext.appendChild(text);
+
+    return svgtext;
+}
+
+var anzeige = function(x, y, text) {
+    var svgtext = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    svgtext.setAttribute("x", x);
+    svgtext.setAttribute("y", y);
+    svgtext.setAttribute("font-size", "200");
+    svgtext.setAttribute("text-anchor", "end");
+    svgtext.setAttribute("style", "font-family: Helvetica");
+
+    var text = document.createTextNode(deutsches_format(text));
+    svgtext.appendChild(text);
+
+    return svgtext;
+}
+
+var scheibenfarbe = function(gewicht) {
+    if (gewicht == 50) return "palegreen";
+    if (gewicht == 25) return "red";
+    if (gewicht == 20) return "royalblue";
+    if (gewicht == 15) return "palegreen";
+    if (gewicht == 10) return "orangered";
+    if (gewicht == 5) return "blue";
+    if (gewicht == 2.5) return "mediumseagreen";
+    if (gewicht == 2) return "palegreen";
+    if (gewicht == 1.25) return "orangered";
+    if (gewicht == 0.5) return "palegreen";
+}
+
+var scheibenhoehe = function(gewicht) {
+    if (gewicht == 50) return 300;
+    if (gewicht == 25) return 300;
+    if (gewicht == 20) return 300;
+    if (gewicht == 15) return 230;
+    if (gewicht == 10) return 200;
+    if (gewicht == 5) return 160;
+    if (gewicht == 2.5) return 140;
+    if (gewicht == 2) return 120;
+    if (gewicht == 1.25) return 100;
+    if (gewicht == 0.5) return 80;
+}
+
+var zuruecksetzen = function() {
+    var svg_element = document.getElementById("svg");
+    if (svg_element) {
+        svg_element.parentNode.removeChild(svg_element);
+    }
+
+    var kilos  = document.getElementById("kilos");
+    var ausgabe_links  = document.getElementById("ausgabe_links");
+    var ausgabe_rechts = document.getElementById("ausgabe_rechts");
+    kilos.value = "";
+    ausgabe_links.innerHTML = "";
+    ausgabe_rechts.innerHTML = "";
+}
+
+var berechne = function() {
+    var ausgabe_links  = document.getElementById("ausgabe_links");
+    var ausgabe_rechts = document.getElementById("ausgabe_rechts");
+    ausgabe_links.innerHTML = "";
+    ausgabe_rechts.innerHTML = "";
+
+    var gesamt_kilos = document.getElementById("kilos").value;
+    if (/^\s*$/.test(gesamt_kilos) || gesamt_kilos == 0) {
+        zuruecksetzen();
+        return;
+    } else if (! /^\d+(?:[,.]\d{0,1})?$/.test(gesamt_kilos)) {
+        ausgabe_links.innerHTML = "Ungültiges Gewicht.";
+        return;
+    }
+    gesamt_kilos = parseFloat(gesamt_kilos.replace(",", "."));
+
+    var stangengewicht = gewicht_von("stange");
+
+    if (stangengewicht > gesamt_kilos) {
+        ausgabe_links.innerHTML = "Das angegebene Gewicht von " + deutsches_format(gesamt_kilos) + "&thinsp;kg ist geringer als das Stangengewicht von " + deutsches_format(stangengewicht) + "&thinsp;kg";
+        return;
+    }
+
+    kilos = (gesamt_kilos - stangengewicht) / 2;
+
+    var elements = document.getElementById("scheiben").elements;
+    var verfuegbare_scheiben = [];
+    for (var i = 0, element; element = elements[i]; i++) {
+        if (element.type === "number") {
+            for (var j = 0; j < element.value / 2; j++) {
+                verfuegbare_scheiben.push(element.name);
+            }
+        }
+    }
+
+    var verschlussgewicht = gewicht_von("verschluss");
+
+    var kilos_uebrig = kilos - verschlussgewicht;
+    var verwendete_scheiben = [];
+    while (verfuegbare_scheiben.length > 0) {
+        var scheibe = verfuegbare_scheiben.shift();
+
+        if (kilos_uebrig - scheibe >= 0) {
+            kilos_uebrig -= scheibe;
+            verwendete_scheiben.push(scheibe);
+        }
+    }
+
+    if (kilos_uebrig) {
+        ausgabe_links.innerHTML = "Das angegebene Gewicht von " + deutsches_format(gesamt_kilos) + "&thinsp;kg lässt sich mit den verfügbaren Scheiben nicht stecken.  Auf jeder Seite bliebe ein Rest von " + deutsches_format(kilos_uebrig) + "&thinsp;kg für den keine Scheiben vorliegen.";
+        return;
+    }
+
+    ausgabe_links.innerHTML = deutsches_format(gesamt_kilos) + " = " + [ verschlussgewicht, kilos - verschlussgewicht, stangengewicht, kilos - verschlussgewicht, verschlussgewicht ].map(deutsches_format).join(" + ");
+
+    ausgabe_rechts.innerHTML += deutsches_format(kilos); 
+
+    if (verwendete_scheiben.length > 0 || verschlussgewicht) {
+        ausgabe_rechts.innerHTML += " = ";
+        if (verwendete_scheiben.length > 0) {
+            ausgabe_rechts.innerHTML += verwendete_scheiben.map(deutsches_format).join(" + ") + (verschlussgewicht ? " + " : "");
+        }
+        if (verschlussgewicht) {
+            ausgabe_rechts.innerHTML += "Verschluss";
+        }
+    }
+
+    var svg_element = document.getElementById("svg");
+    if (svg_element) {
+        svg_element.parentNode.removeChild(svg_element);
+    }
+
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("id", "svg");
+    svg.setAttribute("viewBox", "-70 -200 800 600");
+    svg.setAttribute("preserveAspectRatio", "xMinYMin slice");
+    svg.setAttribute("style", "/* background-color: green; */ height: 100%; left: 0; position: absolute; top: 0; width: 100%;");
+    svg.setAttribute("version", "1.1");
+
+    svg.appendChild(rechteck(180, 40, 900, "gray"));
+    svg.appendChild(rechteck(-30, 100, 20, "gray"));
+
+    for (var i = 0; i < verwendete_scheiben.length; i++) {
+        svg.appendChild(rechteck(60 * i, scheibenhoehe(verwendete_scheiben[i]), 40, scheibenfarbe(verwendete_scheiben[i])));
+        svg.appendChild(scheibenbeschriftung(60 * i, verwendete_scheiben[i]));
+    }
+
+    if (verschlussgewicht != 0) {
+        svg.appendChild(rechteck(verwendete_scheiben.length * 60 + 40, 60, 60, "blue"));
+    }
+
+    if (document.getElementById("gewichtanzeige").checked) {
+        svg.appendChild(anzeige(730, -45, gesamt_kilos));
+    }
+
+    document.getElementById("container").appendChild(svg);
+};
+
+window.onload = function() {
+    document.getElementById("eingabe").onsubmit = function() { berechne(); return false; };
+    document.getElementById("berechnen").onclick = berechne;
+    document.getElementById("zuruecksetzen").onclick = zuruecksetzen;
+};
+</script>
+
+</head>
+
+<body>
+<form id="scheiben" class="scheiben">
+<table>
+<tr>
+<td style="background-color: palegreen"     >50&thinsp;kg × <input name="50"   type="number" step="2" min="0" max="10" value="2"></td>
+<td style="background-color: red"           >25&thinsp;kg × <input name="25"   type="number" step="2" min="0" max="10" value="0"></td>
+<td style="background-color: royalblue"     >20&thinsp; × <input name="20"   type="number" step="2" min="0" max="10" value="4"></td>
+<td style="background-color: palegreen"     >15&thinsp; × <input name="15"   type="number" step="2" min="0" max="10" value="0"></td>
+<td style="background-color: orangered"     >10&thinsp; × <input name="10"   type="number" step="2" min="0" max="10" value="2"></td>
+<td style="background-color: blue"          >5&thinsp; × <input name="5"    type="number" step="2" min="0" max="10" value="2"></td>
+<td style="background-color: mediumseagreen">2,5&thinsp; × <input name="2.5"  type="number" step="2" min="0" max="10" value="2"></td>
+<td style="background-color: palegreen"     >2&thinsp; × <input name="2"  type="number" step="2" min="0" max="10" value="0"></td>
+<td style="background-color: orangered"     >1,25&thinsp; × <input name="1.25" type="number" step="2" min="0" max="10" value="2"></td>
+<td style="background-color: palegreen"     >0,5&thinsp; × <input name="0.5"  type="number" step="2" min="0" max="10" value="0"></td>
+<td style="background-color: beige"         ><select id="verschluss"><option>0&thinsp;kg</option><option>2,5&thinsp;kg</option></select> Verschlüsse</td>
+<td style="background-color: gray"          ><select id="stange"><option>20&thinsp;kg</option><option>25&thinsp;kg</option></select> Stange</td>
+<td style="background-color: lightblue"     ><input type="checkbox" id="gewichtanzeige" checked="checked">Gewichtanzeige</input></td>
+</tr>
+</table>
+</form>
+
+<form id="eingabe">
+<input type="text" id="kilos"> kg
+<button type="button" id="berechnen">Berechnen</button>
+<button type="button" id="zuruecksetzen">Zurücksetzen</button>
+<div id="ausgabe_links"></div><div id="ausgabe_rechts"></div>
+</form>
+
+<div id="container" style="width: 100%; position: relative; user-select: none;" />
+<canvas style="visibility: hidden; display: block; width: 100%; height: 100%;" height="54" width="100"></canvas>
+</div>
+
+</body>
+</html>
