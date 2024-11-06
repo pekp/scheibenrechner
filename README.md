@@ -2,8 +2,8 @@
 
 Dieses Repository enthält zwei Implementierungen eines Scheibenrechners.
 
-- `scheibenrechner.html` – ursprüngliche Implementierung in JavaScript.
-- `src/Main.elm` – Port nach Elm.
+- `js/scheibenrechner.html` – ursprüngliche Implementierung in JavaScript.
+- `elm/src/Main.elm` – Port nach Elm.
 
 ## Funktionalität
 
